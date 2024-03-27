@@ -28,12 +28,14 @@ public class NetworkUtils {
     //==================================================================================================================================
     //                                                              SETS
     //==================================================================================================================================
-    public void set_city_name(String new_city_name) {
+    public void setCityName(String new_city_name) {
         city_name = new_city_name;
+        generateURL();
     }
 
-    public void set_API_key(String new_API_key) {
+    public void setAPI_key(String new_API_key) {
         API_key = new_API_key;
+        generateURL();
     }
 
 

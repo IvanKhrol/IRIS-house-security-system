@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/settings_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".Settings">
+
+    <ImageButton
+        android:id="@+id/button_back"
+        android:layout_width="45dp"
+        android:layout_height="50dp"
+        android:contentDescription="@string/back_button"
+        android:layout_alignTop="@id/textView_layout_name"
+        android:src="@drawable/back_arrow"
+        android:background="@color/white"
+        />
+
+    <TextView
+        android:id="@+id/textView_layout_name"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:fontFamily="sans-serif-black"
+        android:gravity="center"
+        android:padding="4dp"
+        android:text="@string/settings"
+        android:textIsSelectable="false"
+        android:textSize="20sp" />
+
+    <Button
+        android:id="@+id/button_about"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:layout_below="@+id/textView_layout_name"
+        android:text="@string/button_about"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/button_manual"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_below="@+id/button_about"
+        android:textSize="16sp"
+        android:text="@string/button_manual" />
+
+    <Button
+        android:id="@+id/button_contact"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_below="@+id/button_manual"
+        android:textSize="16sp"
+        android:text="@string/button_contact" />
+
+    <TextView
+        android:id="@+id/textView_info"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginHorizontal="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_below="@+id/button_contact"
+        android:textAlignment="center"
+        android:textSize="20sp"
+        />
+
+
+</RelativeLayout>
