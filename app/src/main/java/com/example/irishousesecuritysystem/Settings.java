@@ -11,12 +11,15 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class Settings extends AppCompatActivity {
     public ImageButton  button_back;
     public Button       button_about, button_manual, button_contact;
     public TextView     textView_info;
+    final static String KEY_SAVE_TEXT_EDIT_INFO = "SAVE_TEXT_EDIT_INFO";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -33,6 +36,24 @@ public class Settings extends AppCompatActivity {
         button_manual.setOnClickListener(this::onClickManual);
         button_contact.setOnClickListener(this::onClickContact);
 
+    }
+    //==================================================================================================================================
+    //                                                        save and load Activity
+    //==================================================================================================================================
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        String tmp_str = textView_info.getText().toString();
+        outState.putString(KEY_SAVE_TEXT_EDIT_INFO, tmp_str);
+        Log.d("MyLog", "onSaveInstanceState:  " + tmp_str);
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        String tmp_str = savedInstanceState.getString(KEY_SAVE_TEXT_EDIT_INFO);
+        Log.d("MyLog", "onRestoreInstanceState:  " + tmp_str);
+        textView_info.setText(tmp_str);
     }
 
     //==================================================================================================================================
