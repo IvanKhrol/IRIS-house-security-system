@@ -6,8 +6,8 @@ public class NetworkUtils {
     //==================================================================================================================================
     //                                                              Private fields
     //==================================================================================================================================
-    private static final String BASE_URL = "https://api.openweathermap.org/data/2.5/weather?";
-    private String city_name, API_key;
+    private static final String BASE_URL = "https://home-security-system-in-ru.onrender.com/";
+    private String GET;
     public String url_str;
 
     //==================================================================================================================================
@@ -15,44 +15,33 @@ public class NetworkUtils {
     //==================================================================================================================================
 
     public NetworkUtils() {
-        this.city_name = "";
-        this.API_key = "";
+        GET = "";
     }
 
-    public NetworkUtils(String city_name, String API_key) {
+    public NetworkUtils(String get) {
         this();
-        this.city_name = city_name;
-        this.API_key = API_key;
+        GET = get;
     }
 
     //==================================================================================================================================
     //                                                              SETS
     //==================================================================================================================================
-    public void setCityName(String new_city_name) {
-        city_name = new_city_name;
+    public void setCityName(String new_get) {
+        GET = new_get;
         generateURL();
     }
-
-    public void setAPI_key(String new_API_key) {
-        API_key = new_API_key;
-        generateURL();
-    }
-
 
     //==================================================================================================================================
     //                                                              generateURL
     //==================================================================================================================================
 
     public void generateURL() {
-        if (city_name.isEmpty() || API_key.isEmpty()) {
-            Log.d("MyLog", "Exception in generateURL: null city_name or API_key!");
+        if (GET.isEmpty()) {
+            Log.d("MyLog", "Exception in generateURL: null GET");
             throw new RuntimeException();
         }
 
-         url_str = BASE_URL +
-                "q=" + city_name +
-                "&appid=" + API_key +
-                "&units=metric";
+         url_str = BASE_URL + GET;
     }
 
 }

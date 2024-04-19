@@ -16,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
@@ -23,24 +24,23 @@ import com.android.volley.toolbox.Volley;
 import com.example.irishousesecuritysystem.utils.NetworkUtils;
 
 import org.json.JSONException;
-import org.json.JSONObject;
-
 
 
 public class MainActivity extends AppCompatActivity {
 
     //==================================================================================================================================
-    //                                                              Private fields
+    //                                                              Fields
     //==================================================================================================================================
-    public Button      button_connection, button_settings, button_home, button_profile;
-    public TextView    textView_result;
+    public Button       button_connection, button_settings, button_home, button_profile;
+    public TextView     textView_result;
     public RequestQueue queue;
     public ActivityResultLauncher<Intent> launcher = null;
 
     final static String KEY_SAVE_TEXT_EDIT_RESULT = "SAVE_TEXT_EDIT_RESULT";
-    public String CITY_NAME = "Moscow", APi_KEY = "f8d1450d706f5ad5e5650236ed7d3bdf"; //TODO: delete it is test
+    private static final int MY_SOCKET_TIMEOUT_MS = 600000;
+    public String GET = "get_last_detection";
 
-
+//    https://home-security-system-in-ru.onrender.com/get_last_detection
     //==================================================================================================================================
     //                                                              onCreate
     //==================================================================================================================================
@@ -56,8 +56,8 @@ public class MainActivity extends AppCompatActivity {
 
         textView_result     = findViewById(R.id.textView_result);
 
-        NetworkUtils weather_api = new NetworkUtils(CITY_NAME, APi_KEY);
-        weather_api.generateURL();
+        NetworkUtils house_security_api = new NetworkUtils(GET);
+        house_security_api.generateURL();
 
         queue = Volley.newRequestQueue(this);
 
@@ -69,7 +69,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        button_connection.setOnClickListener(v -> getURLData(weather_api.url_str));
+        button_connection.setOnClickListener(v -> {
+            getURLData(house_security_api.url_str);
+            Log.d("MyLog", "Connect click; Send url: " +  house_security_api.url_str);
+        });
 
         button_settings.setOnClickListener(this::onClickGoSettings);
         button_home.setOnClickListener      (v -> Toast.makeText(MainActivity.this, "Now it does not working", Toast.LENGTH_SHORT).show());
@@ -108,24 +111,29 @@ public class MainActivity extends AppCompatActivity {
     //==================================================================================================================================
     private void getURLData(String url) {
         RequestQueue queue = Volley.newRequestQueue(this);
-//        String url_tmp = "https://asss.com";
         final JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET,
                 url, null, response -> {
             try {
                 Log.d("MyLog", "Response from " + url);
-                JSONObject weather = response.getJSONObject("main");  //получаем JSON-обьекты main(в фигурных скобках - объекты, в квадратных - массивы (JSONArray)).
-                Double temp = weather.getDouble("temp");
-                Log.d("MyLog", "Response temp " + temp);
-                setValues(temp);
+                double confidence = response.getDouble("confidence");  //получаем JSON-обьекты main(в фигурных скобках - объекты, в квадратных - массивы (JSONArray)).
+                boolean detection = response.getBoolean("detection");
+
+                Log.d("MyLog", "Response confidence: " + confidence + " detection: " + detection);
+                setValues(detection, confidence);
             } catch (JSONException e) {
                 throw new RuntimeException(e);
             }
         }, volleyError -> {
-            Log.d("MyLog", "VolleyError: " + url, volleyError);
-            Toast.makeText(MainActivity.this, "Failed to connect to the link:" + url, Toast.LENGTH_LONG).show();
-            throw new RuntimeException(volleyError);
-        });
 
+            Log.d("MyLog", "VolleyError: " + url + "\nstate code: " +  volleyError.networkResponse.statusCode, volleyError);
+            Toast.makeText(MainActivity.this, "Failed to connect to the link with state:" + volleyError.networkResponse.statusCode, Toast.LENGTH_LONG).show();
+//            throw new RuntimeException(volleyError);
+        });
+        request.setRetryPolicy(new DefaultRetryPolicy(
+                MY_SOCKET_TIMEOUT_MS,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        // Add the request to the queue
         queue.add(request);
     }
 
@@ -134,7 +142,8 @@ public class MainActivity extends AppCompatActivity {
     //==================================================================================================================================
 
     @SuppressLint("SetTextI18n")
-    public void setValues(Double val) {
-        textView_result.setText("Temperature in " + CITY_NAME + ": " + val.toString() + "°C");
+    public void setValues(boolean val1, double val2) {
+        double roundedNumber = (double) Math.round(val2 * 100) / 100;
+        textView_result.setText("Detection is: " + val1 + " with confidence: " + roundedNumber);
     }
 }
