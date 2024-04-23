@@ -3,7 +3,11 @@ package com.example.irishousesecuritysystem;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -15,15 +19,13 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
-import com.android.volley.DefaultRetryPolicy;
-import com.android.volley.Request;
+
 import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.example.irishousesecuritysystem.utils.MyForegroundService;
 import com.example.irishousesecuritysystem.utils.NetworkUtils;
-
-import org.json.JSONException;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -35,12 +37,15 @@ public class MainActivity extends AppCompatActivity {
     public TextView     textView_result;
     public RequestQueue queue;
     public ActivityResultLauncher<Intent> launcher = null;
-
+    public NetworkUtils house_security_api;
+    public boolean isServiceRun = false;
     final static String KEY_SAVE_TEXT_EDIT_RESULT = "SAVE_TEXT_EDIT_RESULT";
-    private static final int MY_SOCKET_TIMEOUT_MS = 600000;
+    final static String KEY_SAVE_BUTTON_CONNECTION = "SAVE_BUTTON_CONNECTION";
+    final static String KEY_SAVE_IS_SERVICE_RUN = "IS_SERVICE_RUN";
+    final static String KEY_DETECTION = "KEY_DETECTION";
+    final static String KEY_ERROR = "KEY_ERROR";
     public String GET = "get_last_detection";
-
-//    https://home-security-system-in-ru.onrender.com/get_last_detection
+    private SharedPreferences sharedPref = null;
     //==================================================================================================================================
     //                                                              onCreate
     //==================================================================================================================================
@@ -48,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState)  {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        sharedPref = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
 
         button_connection   = findViewById(R.id.button_connection);
         button_settings     = findViewById(R.id.button_settings);
@@ -56,10 +62,11 @@ public class MainActivity extends AppCompatActivity {
 
         textView_result     = findViewById(R.id.textView_result);
 
-        NetworkUtils house_security_api = new NetworkUtils(GET);
-        house_security_api.generateURL();
+        house_security_api = new NetworkUtils(GET);
 
         queue = Volley.newRequestQueue(this);
+
+        onRestoreInstanceState(savedInstanceState);
 
         launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             if (result.getResultCode() == Activity.RESULT_OK) {
@@ -70,8 +77,16 @@ public class MainActivity extends AppCompatActivity {
         });
 
         button_connection.setOnClickListener(v -> {
-            getURLData(house_security_api.url_str);
-            Log.d("MyLog", "Connect click; Send url: " +  house_security_api.url_str);
+        Intent serviceIntent = new Intent(this, MyForegroundService.class);
+            if(isServiceRun) {
+                stopService(serviceIntent);
+                isServiceRun = false;
+                button_connection.setText(R.string.button_connect_text);
+            } else {
+                ContextCompat.startForegroundService(this, serviceIntent);
+                isServiceRun = true;
+                button_connection.setText(R.string.button_disconnect_text);
+            }
         });
 
         button_settings.setOnClickListener(this::onClickGoSettings);
@@ -84,19 +99,36 @@ public class MainActivity extends AppCompatActivity {
     //                                                        save and load Activity
     //==================================================================================================================================
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        String tmp_str = textView_result.getText().toString();
-        outState.putString(KEY_SAVE_TEXT_EDIT_RESULT, tmp_str);
-        Log.d("MyLog", "onSaveInstanceState:  " + tmp_str);
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        String tmp_str_textView_result   = textView_result.getText().toString();
+        String tmp_str_button_connection = button_connection.getText().toString();
+
+
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString(KEY_SAVE_TEXT_EDIT_RESULT,  tmp_str_textView_result);
+        editor.putString(KEY_SAVE_BUTTON_CONNECTION, tmp_str_button_connection);
+        editor.putBoolean(KEY_SAVE_IS_SERVICE_RUN,   isServiceRun);
+        editor.apply();
+
+        Log.d("MyLog", "onSaveInstanceState");
         super.onSaveInstanceState(outState);
     }
 
     @Override
-    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        String tmp_str = savedInstanceState.getString(KEY_SAVE_TEXT_EDIT_RESULT);
-        Log.d("MyLog", "onRestoreInstanceState:  " + tmp_str);
-        textView_result.setText(tmp_str);
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        if(savedInstanceState != null) {
+            super.onRestoreInstanceState(savedInstanceState);
+        }
+
+        String tmp_str_textView_result   = sharedPref.getString(KEY_SAVE_TEXT_EDIT_RESULT,  "");
+        String tmp_str_button_connection = sharedPref.getString(KEY_SAVE_BUTTON_CONNECTION, getString(R.string.button_connect_text));
+        isServiceRun = sharedPref.getBoolean(KEY_SAVE_IS_SERVICE_RUN, false);
+
+        Log.d("MyLog", "onRestoreInstanceState:  " + tmp_str_button_connection +
+                                " isServiceRun: " + isServiceRun);
+
+        textView_result.setText(tmp_str_textView_result);
+        button_connection.setText(tmp_str_button_connection);
     }
     //==================================================================================================================================
     //                                                    onClickGoSettings
@@ -107,43 +139,47 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //==================================================================================================================================
-    //                                                              getURLData
+    //                                                            getDataFromService
     //==================================================================================================================================
-    private void getURLData(String url) {
-        RequestQueue queue = Volley.newRequestQueue(this);
-        final JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET,
-                url, null, response -> {
-            try {
-                Log.d("MyLog", "Response from " + url);
-                double confidence = response.getDouble("confidence");  //получаем JSON-обьекты main(в фигурных скобках - объекты, в квадратных - массивы (JSONArray)).
-                boolean detection = response.getBoolean("detection");
-
-                Log.d("MyLog", "Response confidence: " + confidence + " detection: " + detection);
-                setValues(detection, confidence);
-            } catch (JSONException e) {
-                throw new RuntimeException(e);
+    private final BroadcastReceiver uiUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String detection_str = sharedPref.getString(KEY_DETECTION, "");
+            String error;
+            Log.d("MyLog", "onReceive " + detection_str);
+            switch (detection_str) {
+                case "false":
+                    textView_result.setText(R.string.all_good);
+                    break;
+                case "true":
+                    textView_result.setText(R.string.attention);
+                    break;
+                case "JSON ERROR":
+                    error = sharedPref.getString(KEY_ERROR, "");
+                    Toast.makeText(MainActivity.this, "Failed to get JSON:" +
+                             error, Toast.LENGTH_LONG).show();
+                    break;
+                case "VOLLEY ERROR":
+                    error = sharedPref.getString(KEY_ERROR, "");
+                    Toast.makeText(MainActivity.this, "Failed to connect to the link with state:" +
+                            error, Toast.LENGTH_LONG).show();
+                    break;
+                default:
+                    break;
             }
-        }, volleyError -> {
+        }
+    };
 
-            Log.d("MyLog", "VolleyError: " + url + "\nstate code: " +  volleyError.networkResponse.statusCode, volleyError);
-            Toast.makeText(MainActivity.this, "Failed to connect to the link with state:" + volleyError.networkResponse.statusCode, Toast.LENGTH_LONG).show();
-//            throw new RuntimeException(volleyError);
-        });
-        request.setRetryPolicy(new DefaultRetryPolicy(
-                MY_SOCKET_TIMEOUT_MS,
-                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-        // Add the request to the queue
-        queue.add(request);
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(uiUpdateReceiver, new IntentFilter("updateUI"));
     }
 
-    //==================================================================================================================================
-    //                                                              setValues
-    //==================================================================================================================================
-
-    @SuppressLint("SetTextI18n")
-    public void setValues(boolean val1, double val2) {
-        double roundedNumber = (double) Math.round(val2 * 100) / 100;
-        textView_result.setText("Detection is: " + val1 + " with confidence: " + roundedNumber);
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(uiUpdateReceiver);
     }
 }
